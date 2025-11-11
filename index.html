@@ -3,130 +3,115 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data SPM Viewer</title>
+  <title>KPPN Painan-SPM</title>
   <style>
-    :root {
-      --primary: #1976d2;
-      --light: #f5f7fa;
-      --dark: #333;
-      --radius: 12px;
-    }
-
     body {
-      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-family: "Poppins", sans-serif;
       margin: 0;
-      background: var(--light);
-      color: var(--dark);
-      padding: 0 1rem;
+      padding: 20px;
+      background: linear-gradient(135deg, #f0f8ff, #e6f7ff);
+      color: #333;
     }
-
-    header {
-      background: var(--primary);
-      color: #fff;
-      padding: 1rem;
-      text-align: center;
-      border-radius: 0 0 var(--radius) var(--radius);
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-
     h1 {
-      margin: 0;
-      font-size: 1.5rem;
+      text-align: center;
+      margin-bottom: 20px;
+      color: #0066cc;
     }
-
-    .controls {
+    .toolbar {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 20px;
       gap: 10px;
-      margin: 20px 0;
     }
-
-    input[type="text"] {
+    .toolbar input {
       padding: 10px;
+      width: 90%;
+      max-width: 400px;
       border: 1px solid #ccc;
-      border-radius: var(--radius);
-      width: 250px;
-      max-width: 80%;
-      font-size: 1rem;
+      border-radius: 8px;
+      font-size: 16px;
     }
-
-    button {
-      background: var(--primary);
+    .toolbar button {
+      background-color: #0066cc;
       color: white;
       border: none;
-      border-radius: var(--radius);
-      padding: 10px 16px;
+      padding: 10px 18px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 1rem;
-      transition: background 0.2s;
+      transition: 0.3s;
     }
-
-    button:hover {
-      background: #0d47a1;
+    .toolbar button:hover {
+      background-color: #004c99;
     }
-
-    .table-container {
-      overflow-x: auto;
-      background: white;
-      border-radius: var(--radius);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      padding: 10px;
-    }
-
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 0;
-      font-size: 0.95rem;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
-
     th, td {
-      padding: 10px;
-      border-bottom: 1px solid #eee;
       text-align: left;
+      padding: 12px 15px;
+      border-bottom: 1px solid #ddd;
     }
-
     th {
-      background: #e3f2fd;
-      color: #0d47a1;
+      background-color: #0066cc;
+      color: white;
+      text-transform: uppercase;
+      cursor: pointer;
+      position: relative;
+      user-select: none;
     }
-
+    th:hover {
+      background-color: #004c99;
+    }
     tr:hover {
-      background: #f1f8ff;
+      background-color: #f2f2f2;
     }
-
+    th.sort-asc::after {
+      content: " ▲";
+      font-size: 12px;
+    }
+    th.sort-desc::after {
+      content: " ▼";
+      font-size: 12px;
+    }
     @media (max-width: 600px) {
       th, td {
-        font-size: 0.85rem;
-        padding: 8px;
-      }
-
-      button, input[type="text"] {
-        font-size: 0.9rem;
+        padding: 10px;
+        font-size: 14px;
       }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>📋 Uraian SPM KPPN Painan </h1>
-  </header>
+  <h1>Uraian SPM</h1>
 
-  <div class="controls">
+  <div class="toolbar">
     <input type="text" id="searchInput" placeholder="Cari data..." onkeyup="searchTable()" />
     <button onclick="loadData()">🔄 Refresh Data</button>
   </div>
 
-  <div class="table-container">
-    <table id="data-table">
-      <thead></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">No</th>
+        <th onclick="sortTable(1)">Jenis SPM</th>
+        <th onclick="sortTable(2)">Contoh Uraian SPM</th>
+        <th onclick="sortTable(3)">Kode SPM</th>
+        <th onclick="sortTable(4)">Lampiran</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbztZdS640UPRHLdgKUFggBtiLLRe4hLNjk_2DzQNbU/dev";
+    let currentData = [];
+    let sortDirection = {};
 
     async function loadData() {
       const btn = document.querySelector("button");
@@ -136,8 +121,8 @@
       try {
         const response = await fetch(SCRIPT_URL);
         const data = await response.json();
-        console.log("Data diterima:", data);
-        renderTable(data);
+        currentData = data.slice(1); // lewati header sheet
+        renderTable(currentData);
       } catch (error) {
         console.error("Gagal memuat data:", error);
         alert("Terjadi kesalahan saat memuat data.");
@@ -147,49 +132,47 @@
       }
     }
 
-    function renderTable(data) {
-      const thead = document.querySelector("#data-table thead");
-      const tbody = document.querySelector("#data-table tbody");
-      thead.innerHTML = "";
+    function renderTable(rows) {
+      const tbody = document.querySelector("#dataTable tbody");
       tbody.innerHTML = "";
 
-      if (!data || data.length === 0) return;
-
-      // Header kolom
-      const headerRow = document.createElement("tr");
-      const firstRow = ["No", ...data[0]];
-      firstRow.forEach(h => {
-        const th = document.createElement("th");
-        th.textContent = h;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-
-      // Baris data
-      for (let i = 1; i < data.length; i++) {
+      rows.forEach((row, index) => {
         const tr = document.createElement("tr");
-        const noCell = document.createElement("td");
-        noCell.textContent = i;
-        tr.appendChild(noCell);
-
-        data[i].forEach(cell => {
-          const td = document.createElement("td");
-          td.textContent = cell;
-          tr.appendChild(td);
-        });
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${row[0] || ""}</td>
+          <td>${row[1] || ""}</td>
+          <td>${row[2] || ""}</td>
+          <td>${row[3] || ""}</td>
+        `;
         tbody.appendChild(tr);
-      }
+      });
     }
 
     function searchTable() {
-      const input = document.getElementById("searchInput");
-      const filter = input.value.toLowerCase();
-      const rows = document.querySelectorAll("#data-table tbody tr");
+      const input = document.getElementById("searchInput").value.toLowerCase();
+      const filtered = currentData.filter(row =>
+        row.some(cell => (cell || "").toString().toLowerCase().includes(input))
+      );
+      renderTable(filtered);
+    }
 
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(filter) ? "" : "none";
+    function sortTable(colIndex) {
+      const headers = document.querySelectorAll("th");
+      headers.forEach(h => h.classList.remove("sort-asc", "sort-desc"));
+
+      sortDirection[colIndex] = !sortDirection[colIndex];
+      const direction = sortDirection[colIndex] ? 1 : -1;
+
+      currentData.sort((a, b) => {
+        const valA = a[colIndex - 1] ? a[colIndex - 1].toString().toLowerCase() : "";
+        const valB = b[colIndex - 1] ? b[colIndex - 1].toString().toLowerCase() : "";
+        return valA.localeCompare(valB) * direction;
       });
+
+      renderTable(currentData);
+
+      headers[colIndex].classList.add(sortDirection[colIndex] ? "sort-asc" : "sort-desc");
     }
 
     loadData();
