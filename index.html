@@ -120,15 +120,7 @@
 
   <div class="table-container">
     <table id="data-table">
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>Jenis SPM</th>
-          <th>Contoh Uraian SPM</th>
-          <th>Kode SPM</th>
-          <th>Lampiran</th>
-        </tr>
-      </thead>
+      <thead></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -144,6 +136,7 @@
       try {
         const response = await fetch(SCRIPT_URL);
         const data = await response.json();
+        console.log("Data diterima:", data);
         renderTable(data);
       } catch (error) {
         console.error("Gagal memuat data:", error);
@@ -155,19 +148,36 @@
     }
 
     function renderTable(data) {
+      const thead = document.querySelector("#data-table thead");
       const tbody = document.querySelector("#data-table tbody");
+      thead.innerHTML = "";
       tbody.innerHTML = "";
 
+      if (!data || data.length === 0) return;
+
+      // Header kolom
+      const headerRow = document.createElement("tr");
+      const firstRow = ["No", ...data[0]];
+      firstRow.forEach(h => {
+        const th = document.createElement("th");
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+
+      // Baris data
       for (let i = 1; i < data.length; i++) {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${i}</td>
-          <td>${data[i][0] || ""}</td>
-          <td>${data[i][1] || ""}</td>
-          <td>${data[i][2] || ""}</td>
-          <td>${data[i][3] || ""}</td>
-        `;
-        tbody.appendChild(row);
+        const tr = document.createElement("tr");
+        const noCell = document.createElement("td");
+        noCell.textContent = i;
+        tr.appendChild(noCell);
+
+        data[i].forEach(cell => {
+          const td = document.createElement("td");
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
       }
     }
 
@@ -182,7 +192,6 @@
       });
     }
 
-    // load data saat pertama kali dibuka
     loadData();
   </script>
 </body>
