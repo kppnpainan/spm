@@ -1,213 +1,67 @@
-<!--
-  index.html — Google Sheets + Apps Script (SPM Viewer)
-  - Bisa membaca, mengubah, dan menghapus data Google Sheet melalui Apps Script
-  - Upload file ini ke GitHub Pages untuk tampilan web, data tersimpan di Google Sheet
--->
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SPM Viewer — Google Sheets</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KPPN Painan</title>
   <style>
-    :root{--bg:#f6f8fb;--card:#fff;--accent:#0f62fe;--muted:#6b7280}
-    body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial; margin:0; background:var(--bg); color:#0f172a}
-    .container{max-width:1100px;margin:30px auto;padding:20px}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between}
-    h1{font-size:20px;margin:0}
-    .controls{display:flex;gap:8px;align-items:center}
-    .btn{background:var(--card);border:1px solid #e6e9ef;padding:8px 10px;border-radius:8px;cursor:pointer}
-    .btn.primary{background:linear-gradient(90deg,var(--accent),#2563eb);color:white;border:none}
-    .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:16px}
-    .card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 1px 4px rgba(15,23,42,0.06)}
-    table{width:100%;border-collapse:collapse;background:var(--card);border-radius:8px;overflow:hidden}
-    th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left}
-    th{background:#f1f5f9;font-weight:600}
-    .search{padding:8px;border-radius:8px;border:1px solid #e6e9ef}
-    .meta{color:var(--muted);font-size:13px}
-    .hidden{display:none}
-    .pagination{display:flex;gap:6px;align-items:center}
-    button.edit,button.delete{border:none;border-radius:6px;padding:6px 10px;color:white;cursor:pointer}
-    button.edit{background:#2563eb}button.delete{background:#dc2626}
-    @media (max-width:700px){header{flex-direction:column;align-items:stretch} .controls{justify-content:space-between}}
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f9; }
+    h1 { text-align: center; color: #333; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; background: #fff; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background: #e0e0e0; }
+    tr:nth-child(even) { background: #f9f9f9; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div>
-        <h1>SPM Viewer</h1>
-        <div class="meta">Menampilkan & mengelola data dari Google Sheet — realtime</div>
-      </div>
-
-      <div class="controls">
-        <input id="q" class="search" placeholder="Cari... (ketik untuk filter)" />
-        <button id="toggleView" class="btn">Card view</button>
-        <button id="exportCsv" class="btn">Export CSV</button>
-      </div>
-    </header>
-
-    <main>
-      <div id="tableWrap" style="margin-top:16px">
-        <table id="dataTable">
-          <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-
-      <div id="cards" class="card-grid hidden"></div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
-        <div id="info" class="meta"></div>
-        <div class="pagination">
-          <button id="prev" class="btn">Prev</button>
-          <div id="pageInfo" class="meta"></div>
-          <button id="next" class="btn">Next</button>
-        </div>
-      </div>
-    </main>
-  </div>
+  <h1>Uraian SPM</h1>
+  <table id="data-table">
+    <thead></thead>
+    <tbody></tbody>
+  </table>
 
   <script>
-    const SHEET_ID = '1A-hh6h6RYv8J08qNgMoQbpUcO8i4JFb_BeC3X2WfG7k';
-    const SHEET_NAME = 'Sheet1';
-    const PAGE_SIZE = 50;
-
-    // ✅ URL Google Apps Script kamu
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx9rpiZERWRHlmYPkrPt5GlfIF_54SGlS4-Q5w0jrRfWcBNV6-XKPrNCAgdlhL7nAKk/exec";
 
-    function gvizUrl(id, sheet){
-      return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?sheet=${encodeURIComponent(sheet)}&tqx=out:json`;
-    }
-
-    function parseGvizText(text){
-      const start = text.indexOf('{');
-      const end = text.lastIndexOf('}');
-      const json = JSON.parse(text.slice(start, end+1));
-      const table = json.table;
-      const cols = table.cols.map(c=>c.label||c.id||'');
-      const rows = table.rows.map(r=> r.c.map(cell => cell ? (cell.v===null ? '' : cell.v) : ''));
-      return {cols, rows};
-    }
-
-    async function fetchSheet(){
-      const url = gvizUrl(SHEET_ID, SHEET_NAME);
-      const res = await fetch(url);
-      const txt = await res.text();
-      return parseGvizText(txt);
-    }
-
-    async function updateRow(rowIndex, values) {
-      const formData = new FormData();
-      formData.append("action", "update");
-      formData.append("row", rowIndex);
-      formData.append("values", JSON.stringify(values));
-      await fetch(SCRIPT_URL, { method: "POST", body: formData });
-      alert("Data berhasil diubah!");
-      init();
-    }
-
-    async function deleteRow(rowIndex) {
-      if(!confirm("Yakin ingin menghapus baris ke-"+rowIndex+"?")) return;
-      const formData = new FormData();
-      formData.append("action", "delete");
-      formData.append("row", rowIndex);
-      await fetch(SCRIPT_URL, { method: "POST", body: formData });
-      alert("Data berhasil dihapus!");
-      init();
-    }
-
-    function editRow(rowIndex){
-      const row = APP.rows[rowIndex - 1];
-      const newValues = prompt("Ubah data (pisahkan dengan koma):", row.join(","));
-      if (newValues !== null) {
-        const arr = newValues.split(",");
-        updateRow(rowIndex, arr);
+    async function loadData() {
+      try {
+        const response = await fetch(SCRIPT_URL);
+        const data = await response.json();
+        renderTable(data);
+      } catch (error) {
+        console.error('Gagal memuat data:', error);
       }
     }
 
-    function renderTable(cols, rows, page=1){
-      const thead = document.getElementById('thead');
-      const tbody = document.getElementById('tbody');
-      thead.innerHTML = '<tr>' + cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('') + '<th>Aksi</th></tr>';
-      const start = (page-1)*PAGE_SIZE;
-      const paged = rows.slice(start, start+PAGE_SIZE);
-      tbody.innerHTML = paged.map((r,i)=>{
-        const rowIndex = start + i + 1;
-        return '<tr>' + r.map(cell=>`<td>${escapeHtml(cell)}</td>`).join('') +
-          `<td><button class="edit" onclick="editRow(${rowIndex})">Ubah</button> <button class="delete" onclick="deleteRow(${rowIndex})">Hapus</button></td></tr>`;
-      }).join('');
-      document.getElementById('info').textContent = `Menampilkan ${start+1} - ${start + paged.length} dari ${rows.length} baris`;
-      document.getElementById('pageInfo').textContent = `Halaman ${page} / ${Math.max(1,Math.ceil(rows.length / PAGE_SIZE))}`;
-    }
+    function renderTable(data) {
+      const tableHead = document.querySelector('#data-table thead');
+      const tableBody = document.querySelector('#data-table tbody');
+      tableHead.innerHTML = '';
+      tableBody.innerHTML = '';
 
-    function renderCards(cols, rows, page=1){
-      const cards = document.getElementById('cards');
-      const start = (page-1)*PAGE_SIZE;
-      const paged = rows.slice(start, start+PAGE_SIZE);
-      cards.innerHTML = paged.map((r,i)=>{
-        const rowIndex = start + i + 1;
-        const fields = cols.map((c,j)=>`<div><strong>${escapeHtml(c)}:</strong> ${escapeHtml(r[j])}</div>`).join('');
-        return `<div class="card">${fields}<div style='margin-top:8px'><button class='edit' onclick='editRow(${rowIndex})'>Ubah</button> <button class='delete' onclick='deleteRow(${rowIndex})'>Hapus</button></div></div>`;
-      }).join('');
-      document.getElementById('info').textContent = `Menampilkan ${start+1} - ${start + paged.length} dari ${rows.length} baris`;
-      document.getElementById('pageInfo').textContent = `Halaman ${page} / ${Math.max(1,Math.ceil(rows.length / PAGE_SIZE))}`;
-    }
+      if (data.length === 0) return;
 
-    function escapeHtml(str){ if(str===null||str===undefined) return ''; return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s]); }
+      const headers = data[0];
+      const headerRow = document.createElement('tr');
+      headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+      });
+      tableHead.appendChild(headerRow);
 
-    let APP = {cols:[], rows:[], filtered:[], page:1, view:'table'};
-
-    async function init(){
-      try{
-        const data = await fetchSheet();
-        APP.cols = data.cols;
-        APP.rows = data.rows;
-        APP.filtered = APP.rows.slice();
-        draw();
-      }catch(err){
-        document.getElementById('info').textContent = 'Gagal memuat data. Pastikan sheet dapat diakses publik atau telah dipublikasikan.';
-        console.error(err);
+      for (let i = 1; i < data.length; i++) {
+        const row = document.createElement('tr');
+        data[i].forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          row.appendChild(td);
+        });
+        tableBody.appendChild(row);
       }
     }
 
-    function draw(){
-      if(APP.view==='table'){
-        document.getElementById('tableWrap').classList.remove('hidden');
-        document.getElementById('cards').classList.add('hidden');
-        renderTable(APP.cols, APP.filtered, APP.page);
-      }else{
-        document.getElementById('tableWrap').classList.add('hidden');
-        document.getElementById('cards').classList.remove('hidden');
-        renderCards(APP.cols, APP.filtered, APP.page);
-      }
-    }
-
-    document.getElementById('toggleView').addEventListener('click', ()=>{
-      APP.view = APP.view === 'table' ? 'cards' : 'table';
-      document.getElementById('toggleView').textContent = APP.view === 'table' ? 'Card view' : 'Table view';
-      draw();
-    });
-
-    document.getElementById('q').addEventListener('input', (e)=>{
-      const q = e.target.value.trim().toLowerCase();
-      if(!q) APP.filtered = APP.rows.slice();
-      else APP.filtered = APP.rows.filter(r=> r.join(' ').toLowerCase().includes(q));
-      APP.page = 1; draw();
-    });
-
-    document.getElementById('prev').addEventListener('click', ()=>{ if(APP.page>1) APP.page--; draw(); });
-    document.getElementById('next').addEventListener('click', ()=>{ const max = Math.ceil(APP.filtered.length / PAGE_SIZE); if(APP.page < max) APP.page++; draw(); });
-
-    document.getElementById('exportCsv').addEventListener('click', ()=>{
-      const csv = [APP.cols, ...APP.filtered].map(r=> r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv],{type:'text/csv'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'sheet-export.csv'; a.click(); URL.revokeObjectURL(url);
-    });
-
-    init();
+    loadData();
   </script>
 </body>
 </html>
