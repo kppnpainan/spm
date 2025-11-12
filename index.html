@@ -88,7 +88,7 @@
   </style>
 </head>
 <body>
-  <h1>📄 Data SPM</h1>
+  <h1>📄Uraian SPM</h1>
 
   <div class="toolbar">
     <input type="text" id="searchInput" placeholder="Cari data..." onkeyup="searchTable()" />
@@ -140,10 +140,10 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${index + 1}</td>
-          <td>${row[0] || ""}</td>
           <td>${row[1] || ""}</td>
           <td>${row[2] || ""}</td>
           <td>${row[3] || ""}</td>
+          <td>${row[4] || ""}</td>
         `;
         tbody.appendChild(tr);
       });
