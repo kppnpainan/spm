@@ -79,6 +79,30 @@
       content: " ▼";
       font-size: 12px;
     }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      margin-top: 15px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .pagination button {
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .pagination button:hover {
+      background-color: #004c99;
+    }
+    .pagination button.active {
+      background-color: #004080;
+    }
+
     @media (max-width: 600px) {
       th, td {
         padding: 10px;
@@ -108,21 +132,28 @@
     <tbody></tbody>
   </table>
 
+  <div class="pagination" id="pagination"></div>
+
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx9rpiZERWRHlmYPkrPt5GlfIF_54SGlS4-Q5w0jrRfWcBNV6-XKPrNCAgdlhL7nAKk/exec";
     let currentData = [];
+    let filteredData = [];
     let sortDirection = {};
+    let currentPage = 1;
+    const rowsPerPage = 8;
 
     async function loadData() {
-      const btn = document.querySelector("button");
+      const btn = document.querySelector(".toolbar button");
       btn.disabled = true;
       btn.textContent = "⏳ Memuat...";
 
       try {
         const response = await fetch(SCRIPT_URL);
         const data = await response.json();
-        currentData = data.slice(1); // lewati header sheet
-        renderTable(currentData);
+        currentData = data.slice(1); // skip header
+        filteredData = currentData;
+        currentPage = 1;
+        renderTable(filteredData);
       } catch (error) {
         console.error("Gagal memuat data:", error);
         alert("Terjadi kesalahan saat memuat data.");
@@ -136,10 +167,14 @@
       const tbody = document.querySelector("#dataTable tbody");
       tbody.innerHTML = "";
 
-      rows.forEach((row, index) => {
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      const paginatedRows = rows.slice(start, end);
+
+      paginatedRows.forEach((row, index) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${index + 1}</td>
+          <td>${start + index + 1}</td>
           <td>${row[1] || ""}</td>
           <td>${row[2] || ""}</td>
           <td>${row[3] || ""}</td>
@@ -147,14 +182,34 @@
         `;
         tbody.appendChild(tr);
       });
+
+      renderPagination(rows.length);
+    }
+
+    function renderPagination(totalRows) {
+      const totalPages = Math.ceil(totalRows / rowsPerPage);
+      const pagination = document.getElementById("pagination");
+      pagination.innerHTML = "";
+
+      for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        if (i === currentPage) btn.classList.add("active");
+        btn.addEventListener("click", () => {
+          currentPage = i;
+          renderTable(filteredData);
+        });
+        pagination.appendChild(btn);
+      }
     }
 
     function searchTable() {
       const input = document.getElementById("searchInput").value.toLowerCase();
-      const filtered = currentData.filter(row =>
+      filteredData = currentData.filter(row =>
         row.some(cell => (cell || "").toString().toLowerCase().includes(input))
       );
-      renderTable(filtered);
+      currentPage = 1;
+      renderTable(filteredData);
     }
 
     function sortTable(colIndex) {
@@ -164,14 +219,13 @@
       sortDirection[colIndex] = !sortDirection[colIndex];
       const direction = sortDirection[colIndex] ? 1 : -1;
 
-      currentData.sort((a, b) => {
+      filteredData.sort((a, b) => {
         const valA = a[colIndex - 1] ? a[colIndex - 1].toString().toLowerCase() : "";
         const valB = b[colIndex - 1] ? b[colIndex - 1].toString().toLowerCase() : "";
         return valA.localeCompare(valB) * direction;
       });
 
-      renderTable(currentData);
-
+      renderTable(filteredData);
       headers[colIndex].classList.add(sortDirection[colIndex] ? "sort-asc" : "sort-desc");
     }
 
