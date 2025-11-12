@@ -3,20 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data SPM</title>
+  <title>Data SPM - KPPN Painan</title>
   <style>
     body {
       font-family: "Poppins", sans-serif;
       margin: 0;
       padding: 20px;
-      background: linear-gradient(135deg, #f0f8ff, #e6f7ff);
+      background-color: #f8f9ff;
       color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
+
     h1 {
+      background-color: #cbb8ff;
+      color: #3b2c8a;
+      padding: 15px 25px;
+      border-radius: 10px;
       text-align: center;
-      margin-bottom: 20px;
-      color: #0066cc;
+      margin-bottom: 25px;
+      width: fit-content;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
     }
+
+    .container {
+      background-color: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      max-width: 900px;
+      width: 100%;
+    }
+
     .toolbar {
       display: flex;
       flex-direction: column;
@@ -24,6 +43,7 @@
       margin-bottom: 20px;
       gap: 10px;
     }
+
     .toolbar input {
       padding: 10px;
       width: 90%;
@@ -31,9 +51,11 @@
       border: 1px solid #ccc;
       border-radius: 8px;
       font-size: 16px;
+      background-color: #eaf2ff;
     }
+
     .toolbar button {
-      background-color: #0066cc;
+      background-color: #6a5acd;
       color: white;
       border: none;
       padding: 10px 18px;
@@ -41,40 +63,44 @@
       cursor: pointer;
       transition: 0.3s;
     }
+
     .toolbar button:hover {
-      background-color: #004c99;
+      background-color: #5848c2;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       background: white;
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      margin-top: 10px;
     }
+
     th, td {
       text-align: left;
       padding: 12px 15px;
       border-bottom: 1px solid #ddd;
     }
+
     th {
-      background-color: #0066cc;
+      background-color: #6a5acd;
       color: white;
       text-transform: uppercase;
       cursor: pointer;
       position: relative;
       user-select: none;
     }
-    th:hover {
-      background-color: #004c99;
-    }
+
     tr:hover {
-      background-color: #f2f2f2;
+      background-color: #f6f4ff;
     }
+
     th.sort-asc::after {
       content: " ▲";
       font-size: 12px;
     }
+
     th.sort-desc::after {
       content: " ▼";
       font-size: 12px;
@@ -87,8 +113,9 @@
       flex-wrap: wrap;
       gap: 6px;
     }
+
     .pagination button {
-      background-color: #0066cc;
+      background-color: #6a5acd;
       color: white;
       border: none;
       padding: 6px 12px;
@@ -96,14 +123,19 @@
       cursor: pointer;
       transition: 0.3s;
     }
+
     .pagination button:hover {
-      background-color: #004c99;
+      background-color: #5848c2;
     }
+
     .pagination button.active {
-      background-color: #004080;
+      background-color: #3b2c8a;
     }
 
     @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+      }
       th, td {
         padding: 10px;
         font-size: 14px;
@@ -112,27 +144,31 @@
   </style>
 </head>
 <body>
-  <h1>Uraian SPM - KPPN Painan</h1>
+  <h1>KPPN Painan</h1>
 
-  <div class="toolbar">
-    <input type="text" id="searchInput" placeholder="Cari data..." onkeyup="searchTable()" />
-    <button onclick="loadData()">🔄 Refresh Data</button>
+  <div class="container">
+    <h2 style="color:#3b2c8a; text-align:center; margin-bottom:15px;">Data Uraian SPM</h2>
+
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="Cari data..." onkeyup="searchTable()" />
+      <button onclick="loadData()">🔄 Refresh Data</button>
+    </div>
+
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">No</th>
+          <th onclick="sortTable(1)">Jenis SPM</th>
+          <th onclick="sortTable(2)">Contoh Uraian SPM</th>
+          <th onclick="sortTable(3)">Kode SPM</th>
+          <th onclick="sortTable(4)">Lampiran</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="pagination" id="pagination"></div>
   </div>
-
-  <table id="dataTable">
-    <thead>
-      <tr>
-        <th onclick="sortTable(0)">No</th>
-        <th onclick="sortTable(1)">Jenis SPM</th>
-        <th onclick="sortTable(2)">Contoh Uraian SPM</th>
-        <th onclick="sortTable(3)">Kode SPM</th>
-        <th onclick="sortTable(4)">Lampiran</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <div class="pagination" id="pagination"></div>
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx9rpiZERWRHlmYPkrPt5GlfIF_54SGlS4-Q5w0jrRfWcBNV6-XKPrNCAgdlhL7nAKk/exec";
@@ -150,7 +186,7 @@
       try {
         const response = await fetch(SCRIPT_URL);
         const data = await response.json();
-        currentData = data.slice(1); // skip header
+        currentData = data.slice(1);
         filteredData = currentData;
         currentPage = 1;
         renderTable(filteredData);
